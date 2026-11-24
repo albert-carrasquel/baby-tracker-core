@@ -27,7 +27,7 @@
   - Configurar `manifest.webmanifest`, iconos basicos, meta viewport movil y Service Worker para cache offline del shell.
   - *Cubre*: Sec. 1, Sec. 2 (Vite + React + TS, Vitest, PWA, prerrequisito Node.js/npm).
   - *Verificacion*: build limpio, `vitest run` operativo, manifest valido y apertura offline del shell base.
-- [ ] **S1-T2: Layout movil para una mano y pantalla principal esqueleto**
+- [x] **S1-T2: Layout movil para una mano y pantalla principal esqueleto**
   - Construir contenedor principal pensado para pantallas compactas Android (controles primarios alcanzables con el pulgar en la zona inferior, cabecera compacta, cero dependencias pesadas).
   - Preparar tarjetas placeholder de "Estado Actual" y seccion "Hoy" (timeline).
   - *Cubre*: Sec. 1 (uso con una mano, fluidez gama de entrada), Sec. 3.5.
