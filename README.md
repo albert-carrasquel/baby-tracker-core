@@ -92,6 +92,14 @@ Las reglas para agentes y colaboradores están en **[AGENTS.md](AGENTS.md)**.
 | 7 | Integración Supabase (auth + sync LWW) | ⏳ |
 | 8 | Rendimiento gama de entrada + verificación MVP | ⏳ |
 
+## 🔒 Seguridad por Diseño
+
+- **Guardia automática de entorno ([envGuard.ts](src/domain/envGuard.ts))**: el build/servidor aborta si detecta variables `VITE_*` con nombres sensibles (`SERVICE_ROLE`, `SECRET`, `PRIVATE`, `PASSWORD`), claves secretas (`sb_secret_*`, `sbp_*`, JWT `service_role`, claves PEM, URIs PostgreSQL) o endpoints remotos sin HTTPS.
+- **CSP estricto y acotado**: el HTML de producción bloquea scripts/estilos inline (`script-src 'self'; style-src 'self'`) y restringe `connect-src` únicamente al origen exacto configurado en `VITE_SUPABASE_URL` (sin comodines `*.supabase.co`).
+- **Service Worker seguro**: solo cachea rutas estáticas conocidas sin query strings (`url.search === ''`), evitando persistir callbacks o tokens en Cache Storage, e invalida cachés mediante hash SHA-256 del shell y bundles.
+- **Base de datos y Auth cerradas (Slice 7)**: RLS obligatorio en todas las tablas, `baby_caregivers` de solo lectura desde cliente, `UPDATE` con `USING` + `WITH CHECK` e inmutabilidad de identidad, borrado exclusivamente lógico (`deleted_at`), límite de tamaño en `payload` JSONB y registro público deshabilitado (`Disable Sign Ups`).
+- **Supply chain**: solo dependencias oficiales con versiones exactas (`.npmrc` `save-exact=true`) y auditoría automática en CI (`npm audit --audit-level=low` + escaneo de patrones secretos).
+
 ## 📄 Licencia
 
 Proyecto personal de uso privado.

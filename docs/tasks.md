@@ -40,11 +40,11 @@
   - *Verificacion*: cambio de paleta inmediato al tocar el interruptor, persistencia al recargar sin flash blanco y CSP intacto.
 
 ## Slice 2: Registro Local de Panales + Contadores de "Hace Cuanto" (Local)
-- [ ] **S2-T1: Contrato `BabyEvent`, defaults locales y utilidades de tiempo / fecha local / UUID**
-  - Definir interfaces TypeScript de `BabyEvent` segun Sec. 6 de `spec.md` (incluyendo `deletedAt: string | null`, `sleep` con `kind: 'nap' | 'night'`, `health_med` con `medName` y `dose`, `feeding_breast` con intervalos por lado, y `diaper`).
+- [ ] **S2-T1: Contrato `BabyEvent`, validacion estricta, defaults locales y utilidades de tiempo / fecha local / UUID**
+  - Definir interfaces TypeScript y validadores runtime de `BabyEvent` segun Sec. 2.1 y Sec. 6 de `spec.md` (incluyendo `deletedAt: string | null`, limites de longitud de textos/notas, numeros finitos en rangos validos, rechazo de claves peligrosas al deserializar, `sleep` con `kind: 'nap' | 'night'`, `health_med` con `medName` y `dose`, `feeding_breast` con intervalos por lado, y `diaper`).
   - Definir `babyId` y `createdBy` locales genericos por defecto (sin PII) para uso previo a Supabase, generador nativo `crypto.randomUUID()`, timestamps en ISO UTC y utilidades puras para agrupar eventos por fecha calendario en hora local del dispositivo (usando la hora local de `startedAt`) y formatear tiempo relativo ("hace 12 min", "hace 2 h 15 min").
-  - *Cubre*: Sec. 2 y 2.1 (`babyId`/`createdBy` locales sin PII, ISO UTC, `UUID` nativo, `updatedAt`, Vitest), Sec. 3.5, Sec. 6 (`BabyEvent`).
-  - *Verificacion*: tests unitarios en Vitest de creacion de evento, agrupacion por fecha local (incluyendo horarios nocturnos cerca de medianoche) y formato de tiempos transcurridos.
+  - *Cubre*: Sec. 2 y 2.1 (`babyId`/`createdBy` locales sin PII, validacion runtime de payloads, ISO UTC, `UUID` nativo, `updatedAt`, Vitest), Sec. 3.5, Sec. 6 (`BabyEvent`).
+  - *Verificacion*: tests unitarios en Vitest de creacion y validacion de eventos (rechazo de payloads fuera de rango/tamano o timestamps invalidos), agrupacion por fecha local (incluyendo horarios nocturnos cerca de medianoche) y formato de tiempos transcurridos.
 - [ ] **S2-T2: Almacenamiento local IndexedDB (`events` store)**
   - Implementar wrapper liviano propio sobre **IndexedDB nativo** (sin librerias no oficiales) con store `events` indexado por `startedAt` y `type`, guardando cada alta con `deletedAt: null` y `syncStatus: 'pending'` (exclusivo del cliente).
   - *Cubre*: Sec. 2 y 2.1 (Offline-First local primero, API nativa, `syncStatus` local), **CA-2** (guardado instantaneo offline).
@@ -112,20 +112,20 @@
 
 ## Slice 7: Integracion Segura con Supabase (2 Cuidadores + RLS Estricto + Sync Offline-First LWW)
 - [ ] **S7-T1: Esquema SQL endurecido, politicas RLS estrictas y cierre de Sign Ups**
-  - Verificar variables en `.env.local` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_DEFAULT_BABY_ID`), asegurando que no se use `SUPABASE_SERVICE_ROLE_KEY` ni se versionen secretos o UUIDs/emails reales en migraciones SQL.
+  - Verificar variables en `.env.local` (`VITE_SUPABASE_URL` sobre HTTPS, `VITE_SUPABASE_ANON_KEY`, `VITE_DEFAULT_BABY_ID`), asegurando que no se usen claves privilegiadas (`SUPABASE_SERVICE_ROLE_KEY`, `sb_secret_*`, `sbp_*`) ni se versionen secretos o UUIDs/emails reales en migraciones SQL.
   - Crear tablas `babies`, `baby_caregivers` y `baby_events` (con `deleted_at` y **sin** columna `sync_status`) con `ENABLE ROW LEVEL SECURITY` obligatorio en todas:
     - Prohibir politicas abiertas (`USING (true)`) o acceso `anon` sin autenticar.
-    - Permitir `SELECT`, `INSERT` y `UPDATE` solo cuando `auth.uid()` pertenezca a `baby_caregivers` del `baby_id`.
-    - Exigir `created_by = auth.uid()` en `INSERT` y denegar `DELETE` fisico en `baby_events`.
+    - `baby_caregivers` de **solo lectura (`SELECT`)** para clientes autenticados (`user_id = auth.uid()`), denegando `INSERT`, `UPDATE` y `DELETE` desde roles cliente.
+    - En `baby_events`, permitir `SELECT`, `INSERT` y `UPDATE` (con `USING` y `WITH CHECK`) solo cuando `auth.uid()` pertenezca a `baby_caregivers` del `baby_id`; exigir `created_by = auth.uid()` en `INSERT`; impedir mutar campos inmutables (`id`, `baby_id`, `created_by`, `created_at`) en `UPDATE`; denegar `DELETE` fisico; agregar `CHECK` de tamano en `payload` (`<= 4096` bytes) y cota de reloj futuro en `updated_at` (`<= now() + interval '5 minutes'`).
   - Crear las 2 cuentas de cuidadores y deshabilitar el registro publico (`Disable Sign Ups`) en Supabase Auth.
-  - *Cubre*: Sec. 2 y 2.1 (`syncStatus` solo local, RLS estricto, sin secretos en Git, `Disable Sign Ups`), **CA-4**.
-  - *Verificacion*: pruebas de acceso verificando comparticion entre las 2 cuentas vinculadas, bloqueo total a usuarios no autenticados/terceros, bloqueo de `DELETE` fisico y bloqueo de nuevos signups publicos.
-- [ ] **S7-T2: Cliente oficial `@supabase/supabase-js`, Auth offline y reasignacion de registros locales**
-  - Instalar unicamente el paquete oficial `@supabase/supabase-js` y verificar `npm audit` con 0 vulnerabilidades.
-  - Integrar login de Supabase Auth para ambos cuidadores manteniendo sesion persistida offline.
+  - *Cubre*: Sec. 2 y 2.1 (`syncStatus` solo local, RLS estricto e inmutable, sin secretos en Git, `Disable Sign Ups`), **CA-4**.
+  - *Verificacion*: pruebas de acceso verificando comparticion entre las 2 cuentas vinculadas, bloqueo de auto-vinculacion en `baby_caregivers`, bloqueo a terceros/no autenticados, inmutabilidad de identidad en `UPDATE`, bloqueo de `DELETE` fisico y bloqueo de signups publicos.
+- [ ] **S7-T2: Cliente oficial `@supabase/supabase-js`, Auth offline, reasignacion local e higiene de logout**
+  - Instalar unicamente el paquete oficial `@supabase/supabase-js` y verificar `npm audit --audit-level=low` con 0 vulnerabilidades.
+  - Integrar login de Supabase Auth para ambos cuidadores manteniendo sesion persistida offline, e implementar cierre de sesion seguro que advierta si quedan eventos `pending` sin sincronizar y limpie el almacenamiento local sensible al confirmar.
   - Al vincular la cuenta, reasignar tanto `babyId` como `createdBy` de los registros locales al `babyId` (`VITE_DEFAULT_BABY_ID`) y al `user.id` reales antes de sincronizar.
-  - *Cubre*: Sec. 2 y 2.1 (libreria oficial sin vulnerabilidades, reasignacion de `babyId` y `createdBy`), **CA-2**, **CA-4**.
-  - *Verificacion*: `npm audit` limpio + tests Vitest de migracion de registros locales + verificacion de que tras reasignar la app sigue operando sin red.
+  - *Cubre*: Sec. 2 y 2.1 (libreria oficial sin vulnerabilidades, reasignacion de `babyId` y `createdBy`, higiene de cierre de sesion), **CA-2**, **CA-4**.
+  - *Verificacion*: `npm audit --audit-level=low` limpio + tests Vitest de migracion de registros locales y flujo de logout seguro + verificacion de operacion sin red.
 - [ ] **S7-T3: Cola de sincronizacion pendiente y reconciliacion LWW (`updatedAt` / `deletedAt`)**
   - Enviar eventos locales con `syncStatus: 'pending' | 'error'` a Supabase (mapeando sin `syncStatus`) al recuperar red o volver al frente; marcar `'synced'` localmente al confirmar.
   - Descargar cambios remotos por `updatedAt` aplicando resolucion LWW comparando `updatedAt` (ISO UTC) sobre `id`, tanto para ediciones como para borrados (`deletedAt`).

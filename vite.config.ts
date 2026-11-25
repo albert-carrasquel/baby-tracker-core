@@ -4,29 +4,44 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { loadEnv } from 'vite';
 import { defineConfig, type Plugin } from 'vitest/config';
-import { assertSafeClientEnv } from './src/domain/envGuard.ts';
+import {
+  assertSafeClientEnv,
+  getScopedSupabaseConnectOrigins,
+} from './src/domain/envGuard.ts';
 
-const PRODUCTION_CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-  "manifest-src 'self'",
-  "worker-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join('; ');
+function buildProductionCsp(connectOrigins: readonly string[]): string {
+  const connectSrc = ["'self'", ...connectOrigins].join(' ');
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    `connect-src ${connectSrc}`,
+    "manifest-src 'self'",
+    "worker-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+}
+
+function readOptionalDistFile(distDir: string, fileName: string): string {
+  try {
+    return readFileSync(resolve(distDir, fileName), 'utf8');
+  } catch {
+    return '';
+  }
+}
 
 /**
- * Enforces client env safety, injects strict CSP in production HTML, and stamps
- * deterministic cache version + hashed asset list into dist/sw.js.
+ * Enforces client env safety, injects origin-scoped CSP in production HTML,
+ * and stamps a full shell + asset content hash into dist/sw.js.
  */
 function securityAndPwaPlugin(): Plugin {
   const generatedAssets: string[] = [];
   let isBuild = false;
+  let productionCsp = buildProductionCsp([]);
 
   return {
     name: 'security-and-pwa',
@@ -34,6 +49,7 @@ function securityAndPwaPlugin(): Plugin {
       isBuild = config.command === 'build';
       const loaded = loadEnv(config.mode, config.root, '');
       assertSafeClientEnv(loaded);
+      productionCsp = buildProductionCsp(getScopedSupabaseConnectOrigins(loaded));
     },
     transformIndexHtml(html) {
       if (!isBuild) {
@@ -41,7 +57,7 @@ function securityAndPwaPlugin(): Plugin {
       }
       return html.replace(
         '<meta charset="UTF-8" />',
-        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${PRODUCTION_CSP}" />`,
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${productionCsp}" />`,
       );
     },
     generateBundle(_options, bundle) {
@@ -54,13 +70,16 @@ function securityAndPwaPlugin(): Plugin {
       if (!isBuild) {
         return;
       }
-      const swPath = resolve(import.meta.dirname, 'dist', 'sw.js');
+      const distDir = resolve(import.meta.dirname, 'dist');
+      const swPath = resolve(distDir, 'sw.js');
       try {
         const swContent = readFileSync(swPath, 'utf8');
-        const versionHash = createHash('sha256')
-          .update(JSON.stringify(generatedAssets))
-          .digest('hex')
-          .slice(0, 10);
+        const hash = createHash('sha256');
+        hash.update(JSON.stringify(generatedAssets));
+        hash.update(readOptionalDistFile(distDir, 'index.html'));
+        hash.update(readOptionalDistFile(distDir, 'theme-init.js'));
+        hash.update(readOptionalDistFile(distDir, 'manifest.webmanifest'));
+        const versionHash = hash.digest('hex').slice(0, 10);
 
         const updated = swContent
           .replace("'dev' /*__CACHE_VERSION__*/", JSON.stringify(versionHash))

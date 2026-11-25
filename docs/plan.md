@@ -37,9 +37,9 @@
   - Interruptor visible de Modo Noche en cabecera, persistido en `localStorage` y pre-aplicado antes de montar React para evitar destellos al abrir la app.
 
 ### Slice 2: Base Local (`BabyEvent` + IndexedDB) y Registro Rapido de Panales con Contador "Hace Cuanto"
-- **Requisitos cubiertos**: Sec. 2 y 2.1 (IndexedDB nativo sin wrappers no oficiales, timestamps ISO UTC, `babyId`/`createdBy` locales por defecto, `UUID` con `crypto.randomUUID()`, `syncStatus` solo local, Vitest), Sec. 3.3 (Panales), Sec. 3.5 (resumen "hace cuanto" + linea de tiempo diaria agrupada por fecha local de `startedAt`), Sec. 6 (`BabyEvent` + `deletedAt: null` + `type: 'diaper'`), CA-2 (parte local offline).
+- **Requisitos cubiertos**: Sec. 2 y 2.1 (IndexedDB nativo sin wrappers no oficiales, validacion estricta de estructura/rangos/longitudes de `BabyEvent`, timestamps ISO UTC, `babyId`/`createdBy` locales por defecto, `UUID` con `crypto.randomUUID()`, `syncStatus` solo local, Vitest), Sec. 3.3 (Panales), Sec. 3.5 (resumen "hace cuanto" + linea de tiempo diaria agrupada por fecha local de `startedAt`), Sec. 6 (`BabyEvent` + `deletedAt: null` + `type: 'diaper'`), CA-2 (parte local offline).
 - **Alcance tecnico**:
-  - Definir tipos TypeScript de `BabyEvent` (incluyendo `deletedAt: string | null`), constantes genericas por defecto para `babyId` y `createdBy` locales (sin PII), generador `crypto.randomUUID()` y utilidades puras en Vitest para timestamps ISO UTC, agrupacion por fecha calendario en hora local del dispositivo (a partir de `startedAt`) y formato de tiempo relativo.
+  - Definir tipos TypeScript y validadores runtime de `BabyEvent` (incluyendo `deletedAt: string | null`, limites de longitud de notas/textos y rangos numericos finitos), constantes genericas por defecto para `babyId` y `createdBy` locales (sin PII), generador `crypto.randomUUID()` y utilidades puras en Vitest para timestamps ISO UTC, agrupacion por fecha calendario en hora local del dispositivo (a partir de `startedAt`) y formato de tiempo relativo.
   - Capa minima de IndexedDB nativo (`events` store) con lectura/escritura inmediata sin red y marcado `syncStatus: 'pending'` (exclusivo del cliente).
   - Flujo de registro de panal en 1-2 toques (`pis`, `caca`, `ambos`), hora ajustable (por defecto ahora) y nota breve opcional.
   - Tarjeta de Estado Actual mostrando en vivo "hace cuanto" fue el ultimo panal (y tipo) + listado cronologico del dia agrupado en hora local del dispositivo y excluyendo registros con `deletedAt !== null`.
@@ -73,15 +73,15 @@
   - Visualizacion en linea de tiempo diaria e historial basico de mediciones de crecimiento, con soporte de edicion y borrado (`deletedAt`).
 
 ### Slice 7: Integracion Segura con Supabase (2 Cuidadores + RLS Estricto + Sync Offline-First LWW)
-- **Requisitos cubiertos**: Sec. 2 y 2.1 (cliente oficial `@supabase/supabase-js` auditado con `npm audit`, variables `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `VITE_DEFAULT_BABY_ID` fuera de Git, nunca `SUPABASE_SERVICE_ROLE_KEY`, RLS estricto, `Disable Sign Ups`, reasignacion de `babyId` y `createdBy` locales antes de sincronizar, cola de sync, LWW por `updatedAt` incluyendo `deletedAt`), CA-2, CA-3, CA-4.
+- **Requisitos cubiertos**: Sec. 2 y 2.1 (cliente oficial `@supabase/supabase-js` auditado con `npm audit --audit-level=low`, variables `VITE_SUPABASE_URL` sobre HTTPS + `VITE_SUPABASE_ANON_KEY` + `VITE_DEFAULT_BABY_ID` fuera de Git, bloqueo de `SUPABASE_SERVICE_ROLE_KEY`/`sb_secret_*`/`sbp_*`, RLS estricto con `baby_caregivers` de solo lectura e inmutabilidad en `UPDATE`, `Disable Sign Ups`, higiene en logout, reasignacion de `babyId` y `createdBy` locales antes de sincronizar, cola de sync, LWW por `updatedAt` incluyendo `deletedAt`), CA-2, CA-3, CA-4.
 - **Alcance tecnico**:
-  - Instalar unicamente `@supabase/supabase-js` oficial y verificar `npm audit` con 0 vulnerabilidades.
+  - Instalar unicamente `@supabase/supabase-js` oficial y verificar `npm audit --audit-level=low` con 0 vulnerabilidades.
   - Esquema SQL parametrizable sin PII ni UUIDs reales hardcodeados (`babies`, `baby_caregivers`, `baby_events` con `deleted_at` y sin `sync_status`), con `ENABLE ROW LEVEL SECURITY` en todas las tablas:
     - Sin politicas abiertas (`USING (true)`) ni acceso `anon` no autenticado.
-    - `SELECT`, `INSERT` y `UPDATE` restringidos a `auth.uid()` presente en `baby_caregivers` para ese `baby_id`.
-    - `INSERT` exigiendo `created_by = auth.uid()` y `DELETE` fisico denegado en `baby_events`.
+    - `baby_caregivers` de solo lectura (`SELECT` sobre `user_id = auth.uid()`), sin `INSERT`/`UPDATE`/`DELETE` desde cliente.
+    - En `baby_events`, `SELECT`, `INSERT` y `UPDATE` (`USING` + `WITH CHECK`) restringidos a `auth.uid()` presente en `baby_caregivers` para ese `baby_id`, exigiendo `created_by = auth.uid()` en `INSERT`, inmutabilidad de `id`/`baby_id`/`created_by`/`created_at` en `UPDATE`, `DELETE` fisico denegado, `CHECK` de tamano en `payload` (`<= 4096` bytes) y cota de reloj futuro en `updated_at`.
   - Documentar y verificar cierre de registro publico (`Disable Sign Ups`) en Supabase Auth tras dar de alta las 2 cuentas de cuidadores.
-  - Autenticacion Supabase con sesion persistida offline; al vincular la cuenta, reasignar tanto `babyId` como `createdBy` de los registros locales al `babyId` (`VITE_DEFAULT_BABY_ID`) y `user.id` reales antes de sincronizar.
+  - Autenticacion Supabase con sesion persistida offline y cierre de sesion seguro (advirtiendo si quedan eventos `pending` antes de limpiar IndexedDB); al vincular la cuenta, reasignar tanto `babyId` como `createdBy` de los registros locales al `babyId` (`VITE_DEFAULT_BABY_ID`) y `user.id` reales antes de sincronizar.
   - Cola de sincronizacion pendiente y reconciliacion LWW por `updatedAt` ISO UTC sobre `id`, validada con Vitest.
 
 ### Slice 8: Endurecimiento Offline, Auditoria de Seguridad/Dependencias, Rendimiento y Verificacion MVP

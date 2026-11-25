@@ -12,9 +12,19 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (least privilege, no persisted token)
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Scan tracked files for accidental secret patterns
+        run: |
+          if git grep -nE '(sb_secret_[A-Za-z0-9_-]+|sbp_[A-Za-z0-9_-]+|-----BEGIN [A-Z ]*PRIVATE KEY-----|SUPABASE_SERVICE_ROLE_KEY\s*=\s*[^\s]+)' -- ':!.github/workflows/ci.yml' ':!src/domain/envGuard.test.ts'; then
+            echo "Forbidden secret pattern detected in tracked files!"
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
