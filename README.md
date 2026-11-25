@@ -2,7 +2,7 @@
 
 Aplicación móvil personal (PWA) para el seguimiento diario del bebé, compartida entre dos cuidadores en dispositivos Android — optimizada para gama de entrada (Samsung Galaxy A07).
 
-> **Estado actual:** MVP en desarrollo activo · Slice 1 completado · Slice 2 en progreso (`S2-T1`)
+> **Estado actual:** MVP en desarrollo activo · Slice 1 completado · Slice 2 en progreso (`S2-T1` y `S2-T2`)
 
 ## ✨ Características del MVP
 

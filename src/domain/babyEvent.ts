@@ -140,11 +140,21 @@ interface BabyEventBase<T extends BabyEventType> {
   readonly syncStatus: SyncStatus;
 }
 
-export type BabyEventOf<T extends BabyEventType> = BabyEventBase<T>;
-
 export type BabyEvent = {
-  [T in BabyEventType]: BabyEventOf<T>;
+  [T in BabyEventType]: BabyEventBase<T>;
 }[BabyEventType];
+
+export type BabyEventOf<T extends BabyEventType> = Extract<
+  BabyEvent,
+  { readonly type: T }
+>;
+
+export function isEventOfType<T extends BabyEventType>(
+  event: BabyEvent,
+  type: T,
+): event is BabyEventOf<T> {
+  return event.type === type;
+}
 
 /**
  * Remote representation for Supabase (syncStatus is strictly local-only).
@@ -471,7 +481,7 @@ export function createBabyEvent<T extends BabyEventType>(
   };
 
   validateBabyEvent(candidate);
-  return candidate;
+  return candidate as unknown as BabyEventOf<T>;
 }
 
 export interface CreateDiaperEventInput {

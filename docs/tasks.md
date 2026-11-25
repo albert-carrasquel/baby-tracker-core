@@ -45,7 +45,7 @@
   - Definir `babyId` y `createdBy` locales genericos por defecto (sin PII) para uso previo a Supabase, generador nativo `crypto.randomUUID()`, timestamps en ISO UTC y utilidades puras para agrupar eventos por fecha calendario en hora local del dispositivo (usando la hora local de `startedAt`) y formatear tiempo relativo ("hace 12 min", "hace 2 h 15 min").
   - *Cubre*: Sec. 2 y 2.1 (`babyId`/`createdBy` locales sin PII, validacion runtime de payloads, ISO UTC, `UUID` nativo, `updatedAt`, Vitest), Sec. 3.5, Sec. 6 (`BabyEvent`).
   - *Verificacion*: tests unitarios en Vitest de creacion y validacion de eventos (rechazo de payloads fuera de rango/tamano o timestamps invalidos), agrupacion por fecha local (incluyendo horarios nocturnos cerca de medianoche) y formato de tiempos transcurridos.
-- [ ] **S2-T2: Almacenamiento local IndexedDB (`events` store)**
+- [x] **S2-T2: Almacenamiento local IndexedDB (`events` store)**
   - Implementar wrapper liviano propio sobre **IndexedDB nativo** (sin librerias no oficiales) con store `events` indexado por `startedAt` y `type`, guardando cada alta con `deletedAt: null` y `syncStatus: 'pending'` (exclusivo del cliente).
   - *Cubre*: Sec. 2 y 2.1 (Offline-First local primero, API nativa, `syncStatus` local), **CA-2** (guardado instantaneo offline).
   - *Verificacion*: los eventos guardados sin red sobreviven recarga y cierre de la app.
