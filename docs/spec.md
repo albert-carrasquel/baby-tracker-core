@@ -11,13 +11,25 @@ Debe funcionar sin anuncios, con soporte online y offline ante poca senal, inter
 - Backend y base de datos: Supabase (autenticacion para ambos cuidadores, base de datos relacional y sincronizacion).
 - Prerrequisitos por etapa:
   - Slices 1-6 (nucleo local offline-first): solo requieren Node.js/npm local.
-  - Slice 7 (integracion Supabase): requiere proyecto en Supabase, `babyId` preconfigurado y variables `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`.
+  - Slice 7 (integracion Supabase): requiere proyecto en Supabase, `babyId` preconfigurado y variables de entorno `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` y `VITE_DEFAULT_BABY_ID` (nunca hardcodeadas en codigo ni migraciones).
 - Estrategia Offline-First, fechas y vinculacion:
   - Toda accion del usuario se guarda primero en almacenamiento local (IndexedDB o equivalente) para respuesta inmediata sin red.
   - Timestamps: guardar todos los timestamps en ISO UTC para LWW y trazabilidad.
-  - Antes de conectar Supabase se usan `babyId` y `createdBy` locales por defecto; al vincular con Supabase (app personal de 2 cuidadores), se vinculan ambos usuarios al `babyId` preconfigurado en DB y se reasignan tanto `babyId` como `createdBy` de los registros locales al `babyId` y `user.id` reales antes de sincronizar.
+  - Antes de conectar Supabase se usan `babyId` y `createdBy` locales por defecto; al vincular con Supabase (app personal de 2 cuidadores), se vinculan ambos usuarios al `babyId` preconfigurado (`VITE_DEFAULT_BABY_ID` / DB) y se reasignan tanto `babyId` como `createdBy` de los registros locales al `babyId` y `user.id` reales antes de sincronizar.
   - Cola de sincronizacion pendiente que envia cambios a Supabase cuando hay conexion. `syncStatus` es exclusivo del almacenamiento local del cliente y no forma parte del esquema remoto de Supabase.
   - Resolucion de conflictos: last-write-wins (LWW) basado en `updatedAt` (ISO timestamp UTC) sobre el mismo registro (`id`), priorizando eventos independientes con `UUID` generado en cliente. Al borrar un evento se setea `deletedAt` y `updatedAt` con el timestamp actual; LWW compara `updatedAt` y los eventos con `deletedAt` no nulo se excluyen de vistas y contadores activos.
+
+### 2.1. Seguridad, Privacidad y Dependencias
+- **Proteccion de secretos y datos sensibles en el repositorio**:
+  - Prohibido subir al repositorio archivos `.env*` reales, claves privadas, tokens, credenciales, emails reales de los cuidadores, datos reales del bebe o el `babyId` real de produccion en codigo fuente o scripts SQL versionados. Solo se versiona `.env.example` con placeholders vacios.
+  - Prohibido exponer o incluir `SUPABASE_SERVICE_ROLE_KEY` en el frontend o en el repositorio (el cliente web opera unicamente con `VITE_SUPABASE_ANON_KEY` bajo RLS).
+- **Seguridad de Base de Datos y Autenticacion (Supabase)**:
+  - **RLS obligatorio**: `ENABLE ROW LEVEL SECURITY` activo en todas las tablas (`babies`, `baby_caregivers`, `baby_events`), sin politicas abiertas (`USING (true)`) ni acceso `anon` sin sesion autenticada.
+  - **Minimo privilegio por operacion**: `SELECT`, `INSERT` y `UPDATE` permitidos unicamente cuando `auth.uid()` pertenece a `baby_caregivers` para ese `baby_id`; `INSERT` debe validar `created_by = auth.uid()`; `DELETE` fisico denegado en `baby_events` (el borrado es exclusivamente logico mediante `deleted_at`).
+  - **Registro cerrado**: deshabilitar el alta publica de usuarios (`Disable Sign Ups`) en Supabase Auth una vez creadas las 2 cuentas de los cuidadores.
+- **Seguridad y procedencia de librerias (Supply Chain)**:
+  - Usar exclusivamente paquetes oficiales y mantenidos de cada ecosistema (React, Vite, TypeScript, Vitest y `@supabase/supabase-js` oficial) priorizando APIs nativas de la plataforma web (`IndexedDB`, `crypto.randomUUID()`, Service Worker, CSS variables).
+  - Prohibido instalar librerias no oficiales, forks de terceros sin respaldo o paquetes con vulnerabilidades conocidas que afecten al proyecto. Toda incorporacion o actualizacion de dependencias debe verificarse con `npm audit` sin vulnerabilidades activas.
 
 ## 3. Modulos del MVP
 

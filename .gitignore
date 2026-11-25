@@ -1,6 +1,19 @@
+# Dependencies & build outputs
 node_modules
 dist
 *.tsbuildinfo
+
+# Environment variables & local secrets (keep only .env.example tracked)
 .env
-.env.local
+.env.*
+!.env.example
 *.local
+
+# Private keys, certificates & local Supabase state/seeds
+*.pem
+*.key
+*.p12
+*.pfx
+.supabase/
+supabase/.temp/
+*seed*.private.sql

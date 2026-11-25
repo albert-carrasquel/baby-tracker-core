@@ -23,3 +23,12 @@ Este proyecto sigue **Spec-Driven Development** sobre la tríada documental:
    - Trabajar un slice/tarea pequeña por vez siguiendo el orden de `docs/tasks.md` (primero núcleo local y offline-first, luego integración Supabase).
    - Cada slice debe dejar la app compilando, con pruebas unitarias en **Vitest** para la lógica introducida (duraciones, contadores, borrado, LWW) y verificación explícita de sus criterios de aceptación.
    - Al completar una tarea, marcar su checkbox en `docs/tasks.md` solo después de haberla verificado.
+
+5. **Seguridad de datos sensibles y accesos a Base de Datos**
+   - **Cero secretos o PII en Git**: nunca commitear archivos `.env*` reales (solo `.env.example` con valores vacíos/ficticios), tokens, claves privadas, `SUPABASE_SERVICE_ROLE_KEY`, emails reales de cuidadores, nombres/datos reales del bebé ni el `babyId` real de producción hardcodeado en código o migraciones SQL.
+   - **Nunca dejar accesos abiertos a la BD**: toda tabla en Supabase debe tener `ENABLE ROW LEVEL SECURITY` activo desde su creación, sin políticas abiertas (`USING (true)` ni acceso `anon` no autenticado). Exigir pertenencia de `auth.uid()` en `baby_caregivers`, validar `created_by = auth.uid()` en `INSERT`, denegar `DELETE` físico en `baby_events` y mantener deshabilitado el registro público (`Disable Sign Ups`) en Supabase Auth tras crear las 2 cuentas.
+
+6. **Política estricta de dependencias (solo oficiales y sin vulnerabilidades)**
+   - Utilizar únicamente librerías **oficiales y mantenidas** del stack aprobado (`react`, `react-dom`, `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `@supabase/supabase-js`) y preferir APIs nativas del navegador (`IndexedDB`, `crypto.randomUUID()`, `Service Worker`, variables CSS) antes que paquetes externos.
+   - **Prohibido** instalar librerías no oficiales, paquetes abandonados/dudosos o dependencias con vulnerabilidades conocidas que puedan afectar al proyecto.
+   - Ejecutar y verificar `npm audit` cada vez que se agregue o actualice una dependencia; si aparece una vulnerabilidad aplicable sin remediación limpia, no incorporar el paquete y avisar al usuario.

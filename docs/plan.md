@@ -5,7 +5,8 @@
 
 ## Cobertura de Requisitos de `docs/spec.md`
 - **Sec. 1 (Objetivo y Contexto)**: PWA movil personal para 2 cuidadores en Android gama de entrada (ej. Samsung Galaxy A07), sin anuncios, online/offline, uso con una mano, Modo Noche suave.
-- **Sec. 2 (Stack y Arquitectura Base)**: Vite + React + TypeScript, estilos con variables CSS (tema claro y modo noche activable/desactivable), Vitest para pruebas unitarias de logica; PWA instalable; Offline-First con IndexedDB local primero, timestamps ISO UTC, `babyId` y `createdBy` locales por defecto hasta vincular Supabase (reasignando ambos al `babyId` y `user.id` reales antes de sincronizar), cola de sincronizacion, `syncStatus` exclusivo del cliente y LWW por `updatedAt` con `UUID` generado en cliente; borrado logico con `deletedAt` + `updatedAt`. Prerrequisitos: Slices 1-6 solo Node.js/npm local; Slice 7 proyecto Supabase, `babyId` preconfigurado y `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`.
+- **Sec. 2 (Stack y Arquitectura Base)**: Vite + React + TypeScript, estilos con variables CSS (tema claro y modo noche activable/desactivable), Vitest para pruebas unitarias de logica; PWA instalable; Offline-First con IndexedDB local primero, timestamps ISO UTC, `babyId` y `createdBy` locales por defecto hasta vincular Supabase (reasignando ambos al `babyId` y `user.id` reales antes de sincronizar), cola de sincronizacion, `syncStatus` exclusivo del cliente y LWW por `updatedAt` con `UUID` generado en cliente; borrado logico con `deletedAt` + `updatedAt`. Prerrequisitos: Slices 1-6 solo Node.js/npm local; Slice 7 proyecto Supabase, `babyId` preconfigurado y `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `VITE_DEFAULT_BABY_ID`.
+- **Sec. 2.1 (Seguridad, Privacidad y Dependencias)**: cero secretos/PII en Git (solo `.env.example` con placeholders, nunca `SUPABASE_SERVICE_ROLE_KEY` ni `babyId`/emails reales en codigo o SQL), RLS estricto por operacion en todas las tablas sin politicas abiertas, signups publicos deshabilitados en Supabase Auth, y uso exclusivo de librerias oficiales verificadas sin vulnerabilidades (`npm audit`).
 - **Sec. 3 (Modulos del MVP)**:
   - **3.1 Alimentacion**: lactancia (`startedAt`/`endedAt` de evento + intervalos `{ start, end: string | null }` por lado `left`/`right` + ultimo lado segun el intervalo mas reciente de la sesion), mamadera (`ml`, tipo, hora), extraccion (duracion y/o `ml`, lado opcional).
   - **3.2 Sueno**: siestas y nocturno (`kind: 'nap' | 'night'`), cronometro activo + carga/edicion manual, ventana de vigilia y duracion del ultimo sueno.
@@ -21,24 +22,25 @@
 1. **Primero valor local utilizable**: los primeros slices (1-6, que solo requieren Node.js/npm local) entregan una app funcional 100% offline en el dispositivo antes de conectar Supabase en Slice 7.
 2. **Cada slice toca punta a punta**: modelo/dominio + persistencia local + UI movil para una mano + pruebas Vitest de la logica + verificacion concreta.
 3. **Contrato unico desde el inicio**: todo evento se modela con `BabyEvent` (`id`, `babyId`, `type`, `startedAt`, `endedAt`, `payload`, `createdBy`, `createdAt`, `updatedAt`, `deletedAt`, `syncStatus` local) guardando timestamps en ISO UTC y usando `babyId` y `createdBy` locales por defecto hasta vincular Supabase.
+4. **Seguridad por diseno y dependencias oficiales**: priorizar APIs nativas web (`IndexedDB`, `crypto.randomUUID()`, Service Worker, CSS variables), usar unicamente paquetes oficiales auditados con `npm audit` (0 vulnerabilidades) y nunca versionar datos sensibles ni dejar tablas sin RLS estricto.
 
 ---
 
 ## Mapa de Vertical Slices
 
 ### Slice 1: Esqueleto PWA Movil + Sistema de Tema con Variables CSS y Modo Noche
-- **Requisitos cubiertos**: Sec. 1, Sec. 2 (Vite + React + TypeScript, variables CSS, Vitest, prerrequisito Node.js/npm), Sec. 3.5 (Modo Noche), CA-5.
+- **Requisitos cubiertos**: Sec. 1, Sec. 2 y 2.1 (Vite + React + TypeScript, variables CSS, Vitest, dependencias oficiales sin vulnerabilidades), Sec. 3.5 (Modo Noche), CA-5.
 - **Alcance tecnico**:
-  - Inicializar Vite + React + TypeScript (`strict`) con Vitest configurado y estructura modular (`domain/`, `storage/`, `sync/`, `ui/`).
-  - Configurar `manifest.webmanifest` y Service Worker basico para instalacion en Android y cache de shell/assets.
+  - Inicializar Vite + React + TypeScript (`strict`) con Vitest configurado, `.gitignore` estricto + `.env.example` y estructura modular (`domain/`, `storage/`, `sync/`, `ui/`).
+  - Configurar `manifest.webmanifest` y Service Worker basico nativo para instalacion en Android y cache de shell/assets.
   - Implementar layout base optimizado para uso con una mano (controles principales en zona inferior/accesible) y sistema de temas con variables CSS (Claro / Modo Noche: fondo muy oscuro, alto contraste suave sin blancos brillantes ni destellos).
   - Interruptor visible de Modo Noche en cabecera, persistido en `localStorage` y pre-aplicado antes de montar React para evitar destellos al abrir la app.
 
 ### Slice 2: Base Local (`BabyEvent` + IndexedDB) y Registro Rapido de Panales con Contador "Hace Cuanto"
-- **Requisitos cubiertos**: Sec. 2 (IndexedDB local primero, timestamps ISO UTC, `babyId`/`createdBy` locales por defecto, `UUID` cliente, `syncStatus` solo local, Vitest), Sec. 3.3 (Panales), Sec. 3.5 (resumen "hace cuanto" + linea de tiempo diaria agrupada por fecha local de `startedAt`), Sec. 6 (`BabyEvent` + `deletedAt: null` + `type: 'diaper'`), CA-2 (parte local offline).
+- **Requisitos cubiertos**: Sec. 2 y 2.1 (IndexedDB nativo sin wrappers no oficiales, timestamps ISO UTC, `babyId`/`createdBy` locales por defecto, `UUID` con `crypto.randomUUID()`, `syncStatus` solo local, Vitest), Sec. 3.3 (Panales), Sec. 3.5 (resumen "hace cuanto" + linea de tiempo diaria agrupada por fecha local de `startedAt`), Sec. 6 (`BabyEvent` + `deletedAt: null` + `type: 'diaper'`), CA-2 (parte local offline).
 - **Alcance tecnico**:
-  - Definir tipos TypeScript de `BabyEvent` (incluyendo `deletedAt: string | null`), constantes por defecto para `babyId` y `createdBy` locales, generador de `UUID` en cliente y utilidades puras en Vitest para timestamps ISO UTC, agrupacion por fecha calendario en hora local del dispositivo (a partir de `startedAt`) y formato de tiempo relativo.
-  - Capa minima de IndexedDB (`events` store) con lectura/escritura inmediata sin red y marcado `syncStatus: 'pending'` (exclusivo del cliente).
+  - Definir tipos TypeScript de `BabyEvent` (incluyendo `deletedAt: string | null`), constantes genericas por defecto para `babyId` y `createdBy` locales (sin PII), generador `crypto.randomUUID()` y utilidades puras en Vitest para timestamps ISO UTC, agrupacion por fecha calendario en hora local del dispositivo (a partir de `startedAt`) y formato de tiempo relativo.
+  - Capa minima de IndexedDB nativo (`events` store) con lectura/escritura inmediata sin red y marcado `syncStatus: 'pending'` (exclusivo del cliente).
   - Flujo de registro de panal en 1-2 toques (`pis`, `caca`, `ambos`), hora ajustable (por defecto ahora) y nota breve opcional.
   - Tarjeta de Estado Actual mostrando en vivo "hace cuanto" fue el ultimo panal (y tipo) + listado cronologico del dia agrupado en hora local del dispositivo y excluyendo registros con `deletedAt !== null`.
 
@@ -70,17 +72,21 @@
   - Formularios rapidos para: Temperatura (°C + hora), Peso y Talla (mediciones con fecha para historial), Medicacion (`medName` + `dose` + hora) y Notas rapidas para comentar con el pediatra.
   - Visualizacion en linea de tiempo diaria e historial basico de mediciones de crecimiento, con soporte de edicion y borrado (`deletedAt`).
 
-### Slice 7: Integracion Supabase (2 Cuidadores en `babyId` Preconfigurado + Sync Offline-First LWW)
-- **Requisitos cubiertos**: Sec. 2 (Supabase Auth, BD relacional sin `syncStatus` remoto, prerrequisitos `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `babyId` preconfigurado, reasignacion de `babyId` y `createdBy` locales antes de sincronizar, cola de sync, LWW por `updatedAt` incluyendo `deletedAt`), CA-2, CA-3, CA-4.
+### Slice 7: Integracion Segura con Supabase (2 Cuidadores + RLS Estricto + Sync Offline-First LWW)
+- **Requisitos cubiertos**: Sec. 2 y 2.1 (cliente oficial `@supabase/supabase-js` auditado con `npm audit`, variables `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `VITE_DEFAULT_BABY_ID` fuera de Git, nunca `SUPABASE_SERVICE_ROLE_KEY`, RLS estricto, `Disable Sign Ups`, reasignacion de `babyId` y `createdBy` locales antes de sincronizar, cola de sync, LWW por `updatedAt` incluyendo `deletedAt`), CA-2, CA-3, CA-4.
 - **Alcance tecnico**:
-  - Esquema SQL en Supabase (`babies`, `baby_caregivers`, `baby_events` incluyendo `deleted_at` y sin columna `sync_status`) con politicas RLS para compartir registros del `babyId` preconfigurado entre los 2 cuidadores autenticados.
-  - Autenticacion Supabase (configurada con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`) con sesion persistida offline; al vincular la cuenta, reasignar tanto `babyId` como `createdBy` de los registros locales al `babyId` y `user.id` reales antes de sincronizar.
-  - Cola de sincronizacion pendiente: empuja eventos `pending`/`error` al volver online/foco, ejecuta pull incremental por `updatedAt` y resuelve conflictos por last-write-wins (`updatedAt` ISO UTC sobre el mismo `id`, cubriendo ediciones y borrados `deletedAt`) validado con Vitest.
-  - Indicador discreto de estado de sincronizacion en cabecera (`sincronizado`, `pendiente`, `offline`, `error`).
+  - Instalar unicamente `@supabase/supabase-js` oficial y verificar `npm audit` con 0 vulnerabilidades.
+  - Esquema SQL parametrizable sin PII ni UUIDs reales hardcodeados (`babies`, `baby_caregivers`, `baby_events` con `deleted_at` y sin `sync_status`), con `ENABLE ROW LEVEL SECURITY` en todas las tablas:
+    - Sin politicas abiertas (`USING (true)`) ni acceso `anon` no autenticado.
+    - `SELECT`, `INSERT` y `UPDATE` restringidos a `auth.uid()` presente en `baby_caregivers` para ese `baby_id`.
+    - `INSERT` exigiendo `created_by = auth.uid()` y `DELETE` fisico denegado en `baby_events`.
+  - Documentar y verificar cierre de registro publico (`Disable Sign Ups`) en Supabase Auth tras dar de alta las 2 cuentas de cuidadores.
+  - Autenticacion Supabase con sesion persistida offline; al vincular la cuenta, reasignar tanto `babyId` como `createdBy` de los registros locales al `babyId` (`VITE_DEFAULT_BABY_ID`) y `user.id` reales antes de sincronizar.
+  - Cola de sincronizacion pendiente y reconciliacion LWW por `updatedAt` ISO UTC sobre `id`, validada con Vitest.
 
-### Slice 8: Endurecimiento Offline, Rendimiento Gama de Entrada y Verificacion MVP
-- **Requisitos cubiertos**: Sec. 1 (fluidez en Samsung Galaxy A07, sin anuncios, poca senal), Sec. 4 (sin funcionalidades v2+), CA-1 a CA-5 completos.
+### Slice 8: Endurecimiento Offline, Auditoria de Seguridad/Dependencias, Rendimiento y Verificacion MVP
+- **Requisitos cubiertos**: Sec. 1 (fluidez en Samsung Galaxy A07, sin anuncios, poca senal), Sec. 2.1 (auditoria de secretos, RLS y `npm audit`), Sec. 4 (sin funcionalidades v2+), CA-1 a CA-5 completos.
 - **Alcance tecnico**:
   - Auditoria de tamano de bundle, cache offline completo en Service Worker y fluidez de render/scroll en viewport movil gama de entrada.
-  - Suite Vitest completa + pruebas integrales de los 5 Criterios de Aceptacion (cronometros tras cierre con pausas, offline -> online, edicion/borrado `deletedAt` sin huerfanos, 2 cuidadores y persistencia de Modo Noche).
-  - Verificacion explicita de no haber incluido alcance v2+ (sin predicciones de sueno, graficos clinicos complejos ni integraciones externas).
+  - Auditoria final de seguridad: `npm audit` sin vulnerabilidades, verificacion de que solo existan paquetes oficiales en `package.json`, revision de que no haya secretos/PII en el historial/archivos versionados y validacion de RLS + bloqueo de signups en Supabase.
+  - Suite Vitest completa + pruebas integrales de los 5 Criterios de Aceptacion y verificacion de ausencia de alcance v2+.
