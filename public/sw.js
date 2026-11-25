@@ -5,6 +5,7 @@ const CORE_SHELL_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/theme-init.js',
   '/icons/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

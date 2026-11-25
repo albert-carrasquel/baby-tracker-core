@@ -1,18 +1,52 @@
 import { useEffect, useState } from 'react';
 import { APP_METADATA, formatShellStatus } from '../domain/appInfo';
+import {
+  THEME_META_COLORS,
+  parseThemeMode,
+  persistTheme,
+  readStoredTheme,
+  toggleThemeMode,
+  type ThemeMode,
+} from '../domain/theme';
 import './App.css';
 
-/* ------------------------------------------------------------------ */
-/*  App Shell — S1-T2: mobile layout for one-handed use (360×800+)    */
-/*  Cabecera compacta + tarjetas Estado Actual (placeholder) +        */
-/*  timeline "Hoy" (placeholder) + barra de acciones rápidas en la    */
-/*  zona del pulgar (bottom).                                         */
-/* ------------------------------------------------------------------ */
+function applyThemeToDocument(mode: ThemeMode): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const root = document.documentElement;
+  root.dataset['theme'] = mode;
+
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', THEME_META_COLORS[mode]);
+  }
+}
+
+function getInitialThemeFromDomOrStorage(): ThemeMode {
+  if (typeof document !== 'undefined') {
+    const domTheme = parseThemeMode(document.documentElement.dataset['theme']);
+    if (domTheme !== null) {
+      return domTheme;
+    }
+  }
+
+  const prefersDark =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  const storage =
+    typeof window !== 'undefined' ? window.localStorage : undefined;
+
+  return readStoredTheme(storage, prefersDark);
+}
 
 export function App() {
   const [isOnline, setIsOnline] = useState<boolean>(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   );
+  const [theme, setTheme] = useState<ThemeMode>(getInitialThemeFromDomOrStorage);
 
   useEffect(() => {
     const on = () => setIsOnline(true);
@@ -24,6 +58,22 @@ export function App() {
       window.removeEventListener('offline', off);
     };
   }, []);
+
+  useEffect(() => {
+    applyThemeToDocument(theme);
+  }, [theme]);
+
+  const handleToggleNightMode = () => {
+    const next = toggleThemeMode(theme);
+    applyThemeToDocument(next);
+    persistTheme(
+      typeof window !== 'undefined' ? window.localStorage : undefined,
+      next,
+    );
+    setTheme(next);
+  };
+
+  const isNightMode = theme === 'night';
 
   return (
     <>
@@ -39,7 +89,19 @@ export function App() {
             <span aria-hidden="true">{isOnline ? '●' : '○'}</span>{' '}
             {isOnline ? 'En línea' : 'Sin red'}
           </span>
-          {/* S1-T3: night-mode toggle will be placed here */}
+
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            aria-pressed={isNightMode}
+            aria-label={
+              isNightMode ? 'Desactivar modo noche' : 'Activar modo noche'
+            }
+            onClick={handleToggleNightMode}
+          >
+            <span aria-hidden="true">{isNightMode ? '🌙' : '☀️'}</span>
+            <span>Noche</span>
+          </button>
         </div>
       </header>
 

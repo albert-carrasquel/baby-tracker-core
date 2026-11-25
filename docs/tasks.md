@@ -33,7 +33,7 @@
   - Preparar tarjetas placeholder de "Estado Actual" y seccion "Hoy" (timeline).
   - *Cubre*: Sec. 1 (uso con una mano, fluidez gama de entrada), Sec. 3.5.
   - *Verificacion*: navegacion y botones utilizables con una mano en viewport 360x800 sin overflow horizontal.
-- [ ] **S1-T3: Sistema de temas con variables CSS (Claro / Modo Noche sin destellos) (CA-5)**
+- [x] **S1-T3: Sistema de temas con variables CSS (Claro / Modo Noche sin destellos) (CA-5)**
   - Definir variables CSS para Tema Claro y Modo Noche (fondo muy oscuro, contraste suave, sin blancos puros ni destellos).
   - Agregar interruptor visible en cabecera para activar/desactivar Modo Noche al instante, persistido en `localStorage` y pre-aplicado antes del primer render desde un script externo `/theme-init.js` en `index.html` (manteniendo compatibilidad con CSP `script-src 'self'` sin `'unsafe-inline'`).
   - *Cubre*: Sec. 1, Sec. 2 y 2.1 (variables CSS, CSP estricto), Sec. 3.5, **CA-5**.
