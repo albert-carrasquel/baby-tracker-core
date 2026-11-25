@@ -35,9 +35,9 @@
   - *Verificacion*: navegacion y botones utilizables con una mano en viewport 360x800 sin overflow horizontal.
 - [ ] **S1-T3: Sistema de temas con variables CSS (Claro / Modo Noche sin destellos) (CA-5)**
   - Definir variables CSS para Tema Claro y Modo Noche (fondo muy oscuro, contraste suave, sin blancos puros ni destellos).
-  - Agregar interruptor visible en cabecera para activar/desactivar Modo Noche al instante, persistido en `localStorage` y aplicado antes del primer render en `index.html`.
-  - *Cubre*: Sec. 1, Sec. 2 (variables CSS), Sec. 3.5, **CA-5**.
-  - *Verificacion*: cambio de paleta inmediato al tocar el interruptor y persistencia al recargar sin flash blanco.
+  - Agregar interruptor visible en cabecera para activar/desactivar Modo Noche al instante, persistido en `localStorage` y pre-aplicado antes del primer render desde un script externo `/theme-init.js` en `index.html` (manteniendo compatibilidad con CSP `script-src 'self'` sin `'unsafe-inline'`).
+  - *Cubre*: Sec. 1, Sec. 2 y 2.1 (variables CSS, CSP estricto), Sec. 3.5, **CA-5**.
+  - *Verificacion*: cambio de paleta inmediato al tocar el interruptor, persistencia al recargar sin flash blanco y CSP intacto.
 
 ## Slice 2: Registro Local de Panales + Contadores de "Hace Cuanto" (Local)
 - [ ] **S2-T1: Contrato `BabyEvent`, defaults locales y utilidades de tiempo / fecha local / UUID**

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { APP_METADATA, formatShellStatus } from '../domain/appInfo';
 import './App.css';
 
 /* ------------------------------------------------------------------ */
@@ -9,7 +10,6 @@ import './App.css';
 /* ------------------------------------------------------------------ */
 
 export function App() {
-  /* ---- Connectivity state (from S1-T1, kept for header badge) ---- */
   const [isOnline, setIsOnline] = useState<boolean>(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   );
@@ -27,22 +27,27 @@ export function App() {
 
   return (
     <>
-      {/* ---- Header ------------------------------------------------ */}
       <header className="app-header">
-        <span className="app-header__title">Baby Tracker</span>
+        <h1 className="app-header__title">{APP_METADATA.name}</h1>
         <div className="app-header__actions">
-          <span className="app-header__status">
-            {isOnline ? '●' : '○'} {isOnline ? 'Online' : 'Offline'}
+          <span
+            className="app-header__status"
+            role="status"
+            aria-live="polite"
+            title={formatShellStatus(isOnline)}
+          >
+            <span aria-hidden="true">{isOnline ? '●' : '○'}</span>{' '}
+            {isOnline ? 'En línea' : 'Sin red'}
           </span>
           {/* S1-T3: night-mode toggle will be placed here */}
         </div>
       </header>
 
-      {/* ---- Scrollable content ------------------------------------ */}
       <main className="app-main">
-        {/* Estado Actual — placeholder cards */}
-        <section>
-          <h2 className="status-section__heading">Estado actual</h2>
+        <section aria-labelledby="status-heading">
+          <h2 id="status-heading" className="status-section__heading">
+            Estado actual
+          </h2>
           <div className="status-cards">
             <StatusCard icon="🍼" label="Última toma" value="—" />
             <StatusCard icon="🧷" label="Último pañal" value="—" />
@@ -50,9 +55,10 @@ export function App() {
           </div>
         </section>
 
-        {/* Timeline del día — placeholder */}
-        <section>
-          <h2 className="timeline-section__heading">Hoy</h2>
+        <section aria-labelledby="timeline-heading">
+          <h2 id="timeline-heading" className="timeline-section__heading">
+            Hoy
+          </h2>
           <div className="timeline">
             <p className="timeline-empty">
               Sin registros todavía. Usá los botones de abajo para empezar.
@@ -61,7 +67,6 @@ export function App() {
         </section>
       </main>
 
-      {/* ---- Quick-action bar (thumb zone) ------------------------- */}
       <nav className="quick-actions" aria-label="Acciones rápidas">
         <QuickActionButton icon="🍼" label="Toma" />
         <QuickActionButton icon="😴" label="Sueño" />
@@ -72,12 +77,12 @@ export function App() {
   );
 }
 
-/* ---- Tiny presentational sub-components (no separate files yet) --- */
-
 function StatusCard(props: { icon: string; label: string; value: string }) {
   return (
     <div className="status-card">
-      <span className="status-card__icon">{props.icon}</span>
+      <span className="status-card__icon" aria-hidden="true">
+        {props.icon}
+      </span>
       <span className="status-card__label">{props.label}</span>
       <span className="status-card__value">{props.value}</span>
     </div>
@@ -87,7 +92,9 @@ function StatusCard(props: { icon: string; label: string; value: string }) {
 function QuickActionButton(props: { icon: string; label: string }) {
   return (
     <button type="button" className="quick-action-btn">
-      <span className="quick-action-btn__icon">{props.icon}</span>
+      <span className="quick-action-btn__icon" aria-hidden="true">
+        {props.icon}
+      </span>
       {props.label}
     </button>
   );

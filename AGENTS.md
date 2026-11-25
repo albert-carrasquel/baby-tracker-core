@@ -32,3 +32,13 @@ Este proyecto sigue **Spec-Driven Development** sobre la tríada documental:
    - Utilizar únicamente librerías **oficiales y mantenidas** del stack aprobado (`react`, `react-dom`, `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `@supabase/supabase-js`) y preferir APIs nativas del navegador (`IndexedDB`, `crypto.randomUUID()`, `Service Worker`, variables CSS) antes que paquetes externos.
    - **Prohibido** instalar librerías no oficiales, paquetes abandonados/dudosos o dependencias con vulnerabilidades conocidas que puedan afectar al proyecto.
    - Ejecutar y verificar `npm audit` cada vez que se agregue o actualice una dependencia; si aparece una vulnerabilidad aplicable sin remediación limpia, no incorporar el paquete y avisar al usuario.
+
+7. **Seguridad en el Cliente (CSP / XSS / Service Worker) y Checklist Pre-Commit**
+   - **Compatibilidad con CSP estricto**: el build de producción inyecta `Content-Security-Policy` con `script-src 'self'` y `style-src 'self'` (sin `'unsafe-inline'`). No usar scripts inline en `index.html`, `eval` ni `dangerouslySetInnerHTML`; para scripts tempranos (como inicialización de tema) usar archivos estáticos del mismo origen (ej. `/theme-init.js`).
+   - **Service Worker seguro**: cachear únicamente rutas estáticas conocidas del mismo origen sin query strings (`url.search === ''`), para no persistir callbacks ni tokens de autenticación en Cache Storage.
+   - **Definition of Done antes de cada commit**:
+     1. `npm run typecheck` (`tsc -b --noEmit`) pasa sin errores.
+     2. `npm test` (`vitest run`) pasa al 100%.
+     3. `npm run build` compila limpio.
+     4. `npm audit` reporta `0 vulnerabilities` (obligatorio si cambió `package.json` / `package-lock.json`).
+     5. Revisión de `git status` / `git diff` confirmando ausencia de secretos, claves privadas o PII.

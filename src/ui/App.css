@@ -186,6 +186,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
+  min-height: 52px;
   background: var(--color-accent-soft);
   color: var(--color-accent);
   border: none;
@@ -198,6 +199,11 @@ body {
   user-select: none;
   transition: opacity 0.1s;
   touch-action: manipulation;
+}
+
+.quick-action-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .quick-action-btn:active {
