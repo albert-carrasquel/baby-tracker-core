@@ -40,7 +40,7 @@
   - *Verificacion*: cambio de paleta inmediato al tocar el interruptor, persistencia al recargar sin flash blanco y CSP intacto.
 
 ## Slice 2: Registro Local de Panales + Contadores de "Hace Cuanto" (Local)
-- [ ] **S2-T1: Contrato `BabyEvent`, validacion estricta, defaults locales y utilidades de tiempo / fecha local / UUID**
+- [x] **S2-T1: Contrato `BabyEvent`, validacion estricta, defaults locales y utilidades de tiempo / fecha local / UUID**
   - Definir interfaces TypeScript y validadores runtime de `BabyEvent` segun Sec. 2.1 y Sec. 6 de `spec.md` (incluyendo `deletedAt: string | null`, limites de longitud de textos/notas, numeros finitos en rangos validos, rechazo de claves peligrosas al deserializar, `sleep` con `kind: 'nap' | 'night'`, `health_med` con `medName` y `dose`, `feeding_breast` con intervalos por lado, y `diaper`).
   - Definir `babyId` y `createdBy` locales genericos por defecto (sin PII) para uso previo a Supabase, generador nativo `crypto.randomUUID()`, timestamps en ISO UTC y utilidades puras para agrupar eventos por fecha calendario en hora local del dispositivo (usando la hora local de `startedAt`) y formatear tiempo relativo ("hace 12 min", "hace 2 h 15 min").
   - *Cubre*: Sec. 2 y 2.1 (`babyId`/`createdBy` locales sin PII, validacion runtime de payloads, ISO UTC, `UUID` nativo, `updatedAt`, Vitest), Sec. 3.5, Sec. 6 (`BabyEvent`).

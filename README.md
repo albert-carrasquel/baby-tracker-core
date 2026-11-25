@@ -2,7 +2,7 @@
 
 Aplicación móvil personal (PWA) para el seguimiento diario del bebé, compartida entre dos cuidadores en dispositivos Android — optimizada para gama de entrada (Samsung Galaxy A07).
 
-> **Estado actual:** MVP en desarrollo activo · Slice 1 de 8 completado (`S1-T1`, `S1-T2` y `S1-T3`)
+> **Estado actual:** MVP en desarrollo activo · Slice 1 completado · Slice 2 en progreso (`S2-T1`)
 
 ## ✨ Características del MVP
 
@@ -84,7 +84,7 @@ Las reglas para agentes y colaboradores están en **[AGENTS.md](AGENTS.md)**.
 | Slice | Descripción | Estado |
 | :---: | :--- | :---: |
 | 1 | Esqueleto PWA + Layout móvil + Modo Noche | ✅ |
-| 2 | `BabyEvent` + IndexedDB + Pañales + "Hace cuánto" | ⏳ |
+| 2 | `BabyEvent` + IndexedDB + Pañales + "Hace cuánto" | 🔧 |
 | 3 | Edición, borrado (`deletedAt`) y recálculo | ⏳ |
 | 4 | Sueño (cronómetro persistente + vigilia) | ⏳ |
 | 5 | Alimentación (lactancia dual + mamadera + extracción) | ⏳ |
